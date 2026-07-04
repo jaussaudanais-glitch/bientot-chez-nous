@@ -1,0 +1,22 @@
+rules_version = '2';
+
+// Colle ces règles dans la console Firebase :
+// Firestore Database → Règles → remplace tout → Publier.
+// Remplace les deux e-mails par les vôtres (les mêmes que dans src/firebase.js).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isMember() {
+      return request.auth != null
+        && request.auth.token.email in [
+          "jaussaud.anais@gmail.com",
+          "tabet.audrey@gmail.com"
+        ];
+    }
+
+    match /{document=**} {
+      allow read, write: if isMember();
+    }
+  }
+}
