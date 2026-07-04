@@ -193,6 +193,11 @@ const SEED = [
 ];
 
 const euro = (n) => n.toLocaleString("fr-FR") + " €";
+const externalUrl = (u) => {
+  const s = (u || "").trim();
+  if (!s) return "";
+  return /^https?:\/\//i.test(s) ? s : "https://" + s;
+};
 const fmtVisit = (iso) => {
   if (!iso) return "";
   const d = new Date(iso);
@@ -221,7 +226,7 @@ const gcalLink = (b, emails) => {
     dates: `${gcalStamp(start)}/${gcalStamp(end)}`,
   });
   if (b.area) params.set("location", b.area);
-  const details = [b.notes, b.url ? "Annonce : https://" + b.url : "", b.agency ? "Agence : " + b.agency : ""].filter(Boolean).join("\n");
+  const details = [b.notes, b.url ? "Annonce : " + externalUrl(b.url) : "", b.agency ? "Agence : " + b.agency : ""].filter(Boolean).join("\n");
   if (details) params.set("details", details);
   const guests = [emails.anais, emails.copine].filter(Boolean).join(",");
   if (guests) params.set("add", guests);
@@ -671,9 +676,10 @@ function Detail({ b, names, me, other, emails, onClose, update, checklist, onAns
         </div>
 
         {b.url && (
-          <a href={`https://${b.url}`} className="inline-flex items-center gap-1.5 mt-2"
+          <a href={externalUrl(b.url)} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 mt-2"
             style={{ fontSize: 13, color: me === "anais" ? C.anais : C.copine }}>
-            <Link2 size={14} /> Voir l'annonce ({b.url})
+            <Link2 size={14} /> Voir l'annonce
           </a>
         )}
 
