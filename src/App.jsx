@@ -7,7 +7,7 @@ import { auth, db, googleProvider, memberRole } from "./firebase.js";
 import {
   Heart, X, Check, Plus, MapPin, Phone, Calendar, ArrowLeft,
   Home, Settings, Link2, Scale, ChevronRight, Archive, RotateCcw, Ruler, Tag,
-  ClipboardList, Trash2, Building2, ChevronDown, Clock, Sparkles, Image as ImageIcon,
+  ClipboardList, Trash2, Building2, ChevronDown, Clock,
 } from "lucide-react";
 
 // ── Design tokens ───────────────────────────────────────────────
@@ -1003,30 +1003,6 @@ function AddSheet({ me, names, onClose, onAdd }) {
   const col = me === "anais" ? C.anais : C.copine;
   const ss = siteStyle(f.site);
 
-  const [preview, setPreview] = useState(null);
-  const [loadingPreview, setLoadingPreview] = useState(false);
-
-  const getPreview = () => {
-    if (!f.url.trim()) return;
-    setLoadingPreview(true);
-    setPreview(null);
-    // PROTOTYPE : récupération simulée. En version Firebase, on appellera ici une
-    // fonction Cloud (httpsCallable "fetchListingPreview") qui lit l'annonce
-    // côté serveur et renvoie { title, description, image } via les balises
-    // Open Graph / meta de la page. Repli manuel si l'appel échoue.
-    setTimeout(() => {
-      const site = f.site || detectSite(f.url) || "l'annonce";
-      const p = {
-        title: "Appartement 3 pièces – 62 m²",
-        description: "Bel appartement traversant au 4e étage avec ascenseur, séjour lumineux exposé sud, cuisine équipée, deux chambres, cave. Copropriété bien tenue. (Aperçu simulé — sera récupéré depuis " + site + " en version connectée.)",
-        image: null,
-      };
-      setPreview(p);
-      setF((s) => ({ ...s, title: s.title || p.title, notes: s.notes || p.description }));
-      setLoadingPreview(false);
-    }, 900);
-  };
-
   const submit = () => {
     const rooms = Number(f.rooms) || 1;
     const title = f.title.trim() || `${rooms} ${rooms > 1 ? "pièces" : "pièce"}${f.area ? " · " + f.area : ""}`;
@@ -1065,35 +1041,6 @@ function AddSheet({ me, names, onClose, onAdd }) {
             )}
           </div>
         </label>
-
-        {f.url.trim() && (
-          <button onClick={getPreview} disabled={loadingPreview}
-            className="inline-flex items-center gap-1.5 mt-2"
-            style={{ fontSize: 12.5, fontWeight: 500, color: loadingPreview ? C.inkFaint : col }}>
-            <Sparkles size={14} /> {loadingPreview ? "Récupération de l'aperçu…" : "Récupérer l'aperçu de l'annonce"}
-          </button>
-        )}
-
-        {preview && (
-          <div className="mt-2.5 rounded-xl p-3 flex gap-3" style={{ background: C.card, border: `1px solid ${C.line}` }}>
-            <div style={{ width: 52, height: 52, borderRadius: 8, background: C.paper, border: `1px solid ${C.line}`,
-              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <ImageIcon size={20} color={C.inkFaint} />
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 13, fontWeight: 500 }}>{preview.title}</p>
-              <p className="mt-0.5" style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.4,
-                display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                {preview.description}
-              </p>
-            </div>
-          </div>
-        )}
-        {preview && (
-          <p style={{ fontSize: 11.5, color: C.inkFaint, marginTop: 6 }}>
-            Titre et infos clés pré-remplis. Vérifie et complète le prix, la surface et le quartier.
-          </p>
-        )}
 
         <p style={{ fontSize: 11.5, color: C.inkFaint, marginTop: 12, marginBottom: 14 }} className="inline-flex items-center gap-1.5">
           <Avatar who={me} names={names} size={16} /> Trouvé par {names[me]} — tu aimes déjà, {names[me === "anais" ? "copine" : "anais"]} donnera son avis.
