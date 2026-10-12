@@ -7,7 +7,7 @@ import { auth, db, googleProvider, memberRole } from "./firebase.js";
 import {
   Heart, X, Check, Plus, MapPin, Phone, Calendar, ArrowLeft,
   Home, Settings, Link2, Scale, ChevronRight, Archive, RotateCcw, Ruler, Tag,
-  ClipboardList, Trash2, Building2, ChevronDown, Clock,
+  ClipboardList, Trash2, Building2, ChevronDown, Clock, Pencil,
 } from "lucide-react";
 
 // ── Design tokens ───────────────────────────────────────────────
@@ -636,6 +636,8 @@ function Detail({ b, names, me, other, emails, onClose, update, checklist, onAns
   const [slots, setSlots] = useState(b.agence.slots || []);
   const [confirmAt, setConfirmAt] = useState(b.agence.visitAt || "");
   const [debrief, setDebrief] = useState(b.debrief[me]);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => { setNotes(b.notes || ""); }, [b.notes]);
 
   const bothLike = b.avis.anais.like === true && b.avis.copine.like === true;
 
@@ -648,7 +650,17 @@ function Detail({ b, names, me, other, emails, onClose, update, checklist, onAns
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: st.dot, display: "inline-block" }} />
           {st.label}
         </span>
+        <button onClick={() => setEditing(true)}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1"
+          style={{ fontSize: 12.5, fontWeight: 500, background: C.card, color: C.ink, border: `1px solid ${C.line}` }}>
+          <Pencil size={13} /> Modifier
+        </button>
       </div>
+
+      {editing && (
+        <AddSheet me={me} names={names} initial={b} onClose={() => setEditing(false)}
+          onAdd={(patch) => { update(b.id, patch); setEditing(false); }} />
+      )}
 
       <div className="px-5 py-4 pb-28">
         <div className="flex items-baseline justify-between gap-3">
@@ -771,9 +783,24 @@ function Detail({ b, names, me, other, emails, onClose, update, checklist, onAns
                   <Check size={17} /> On est d'accord — valider à deux
                 </Btn>
               ) : (
-                <p style={{ fontSize: 13, color: C.inkSoft, textAlign: "center", marginBottom: 12 }}>
-                  Il manque un « j'aime » des deux côtés pour valider.
-                </p>
+                <>
+                  <p style={{ fontSize: 13, color: C.inkSoft, textAlign: "center", marginBottom: 12 }}>
+                    Il manque un « j'aime » des deux côtés pour valider.
+                  </p>
+                  <Btn full color={C.copine} onClick={() => {
+                    if (b.avis[other].like === false &&
+                        !window.confirm(`${names[other]} a dit « non » à ce bien. Valider quand même ?`)) return;
+                    update(b.id, {
+                      status: "valide",
+                      avis: {
+                        [me]: { ...b.avis[me], like: true },
+                        [other]: { ...b.avis[other], like: true, byProxy: me },
+                      },
+                    });
+                  }}>
+                    <Check size={17} /> Valider pour nous deux (à la place de {names[other]})
+                  </Btn>
+                </>
               )}
             </>
           )}
@@ -1001,8 +1028,14 @@ function Compare({ biens, names }) {
 }
 
 // ── Add sheet ───────────────────────────────────────────────────
-function AddSheet({ me, names, onClose, onAdd }) {
-  const [f, setF] = useState({ title: "", area: "", price: "", surface: "", rooms: "", url: "", site: "", agency: "", exterior: "", notes: "" });
+function AddSheet({ me, names, onClose, onAdd, initial }) {
+  const isEdit = !!initial;
+  const [f, setF] = useState(() => isEdit ? {
+    title: initial.title || "", area: initial.area === "—" ? "" : (initial.area || ""),
+    price: String(initial.price || ""), surface: String(initial.surface || ""), rooms: String(initial.rooms || ""),
+    url: initial.url || "", site: initial.site || "", agency: initial.agency || "",
+    exterior: initial.exterior || "", notes: initial.notes || "",
+  } : { title: "", area: "", price: "", surface: "", rooms: "", url: "", site: "", agency: "", exterior: "", notes: "" });
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
   const onUrl = (e) => { const url = e.target.value; setF((s) => ({ ...s, url, site: detectSite(url) || s.site })); };
   const valid = f.price && f.surface;
@@ -1012,10 +1045,14 @@ function AddSheet({ me, names, onClose, onAdd }) {
   const submit = () => {
     const rooms = Number(f.rooms) || 1;
     const title = f.title.trim() || `${rooms} ${rooms > 1 ? "pièces" : "pièce"}${f.area ? " · " + f.area : ""}`;
-    onAdd({
+    const fields = {
       title, area: f.area || "—", url: f.url.trim(), site: f.site || detectSite(f.url),
       agency: f.agency.trim(), exterior: f.exterior, notes: f.notes.trim(),
       price: Number(f.price) || 0, surface: Number(f.surface) || 0, rooms,
+    };
+    if (isEdit) { onAdd(fields); return; }
+    onAdd({
+      ...fields,
       addedBy: me, status: "tri",
       avis: { anais: { like: me === "anais" ? true : null, comment: "" },
               copine: { like: me === "copine" ? true : null, comment: "" } },
@@ -1028,7 +1065,7 @@ function AddSheet({ me, names, onClose, onAdd }) {
     <div className="fixed inset-0 z-30 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.35)" }}>
       <div className="w-full max-w-md rounded-t-3xl p-5 pb-8 overflow-y-auto" style={{ background: C.paper, maxHeight: "90vh" }}>
         <div className="flex items-center justify-between mb-4">
-          <h3 style={{ fontSize: 18, fontWeight: 500, fontFamily: "Georgia, serif" }}>Nouveau bien</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 500, fontFamily: "Georgia, serif" }}>{isEdit ? "Modifier le bien" : "Nouveau bien"}</h3>
           <button onClick={onClose}><X size={22} color={C.inkSoft} /></button>
         </div>
 
@@ -1048,9 +1085,10 @@ function AddSheet({ me, names, onClose, onAdd }) {
           </div>
         </label>
 
-        <p style={{ fontSize: 11.5, color: C.inkFaint, marginTop: 12, marginBottom: 14 }} className="inline-flex items-center gap-1.5">
+        {!isEdit && <p style={{ fontSize: 11.5, color: C.inkFaint, marginTop: 12, marginBottom: 14 }} className="inline-flex items-center gap-1.5">
           <Avatar who={me} names={names} size={16} /> Trouvé par {names[me]} — tu aimes déjà, {names[me === "anais" ? "copine" : "anais"]} donnera son avis.
-        </p>
+        </p>}
+        {isEdit && <div style={{ height: 14 }} />}
 
         <div className="space-y-2.5">
           <div className="flex gap-2.5">
@@ -1106,7 +1144,7 @@ function AddSheet({ me, names, onClose, onAdd }) {
           className="w-full rounded-full py-3 mt-5"
           style={{ fontSize: 15, fontWeight: 500, background: valid ? col : C.line,
             color: valid ? "#fff" : C.inkFaint }}>
-          Ajouter au tri
+          {isEdit ? "Enregistrer les modifications" : "Ajouter au tri"}
         </button>
       </div>
     </div>
